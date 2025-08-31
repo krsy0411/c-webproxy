@@ -210,12 +210,16 @@ void serve_static(int fd, char* filename, int filesize)
 void get_filetype(char* filename, char* filetype)
 {
   // strstr : 문자열 내 특정 부분 문자열(패턴)이 처음 나타나는 위치를 찾는 함수
+
+  // MIME 타입
   if(strstr(filename, ".html"))
     strcpy(filetype, "text/html");
   else if(strstr(filename, ".gif"))
     strcpy(filetype, "image/gif");
   else if(strstr(filename, ".jpg"))
     strcpy(filetype, "image/jpeg");
+  else if(strstr(filename, ".mpg") || strstr(filename, ".mpeg"))
+    strcpy(filetype, "video/mpeg"); // 11.7 : MPG 비디오 파일 처리
   else
     strcpy(filetype, "text/plain");
 }
