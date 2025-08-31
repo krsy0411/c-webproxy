@@ -2,7 +2,7 @@
  * adder.c - a minimal CGI program that adds two numbers together
  */
 /* $begin adder */
-#include "csapp.h"
+#include "../csapp.h"
 
 int main(void)
 {
@@ -29,10 +29,13 @@ int main(void)
           n1, n2, n1 + n2);
   sprintf(content + strlen(content), "Thanks for visiting!\r\n");
 
-  /* Generate the HTTP response */
-  printf("Content-type: text/html\r\n");
-  printf("Content-length: %d\r\n", (int)strlen(content));
+  /* HTTP 응답 생성 */
+  printf("Content-Type: text/html\r\n");
+  printf("Content-Length: %d\r\n", (int)strlen(content));
+  printf("Connection: close\r\n");
   printf("\r\n");
+
+  // 바디부분 : 바디 출력
   printf("%s", content);
   fflush(stdout);
 

@@ -13,7 +13,7 @@ void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
 void get_filetype(char *filename, char *filetype);
-void serve_dynamic(int fd, char *filename, char *cgiargs);
+void serve_dynamic(int fd, char *filename, char *cgiargs, char* method);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
 int main(int argc, char **argv)
@@ -58,7 +58,7 @@ void doit(int fd)
   printf("%s", buf);
   sscanf(buf, "%s %s %s", method, uri, version);
 
-  if(strcasecmp(method, "GET"))
+  if(!(strcasecmp(method, "GET") == 0 || strcasecmp(method, "HEAD") == 0))
   {
     clienterror(fd, method, "501", "Not Implemented", "Tiny does not implement this method");
     return;
@@ -99,7 +99,7 @@ void doit(int fd)
     }
 
     // 동적 컨텐츠 제공
-    serve_dynamic(fd, filename, cgiargs);
+    serve_dynamic(fd, filename, cgiargs, method);
   }
 }
 
@@ -165,13 +165,13 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
   else
   {
     // uri에서 CGI 인자 추출
-    ptr = strchr(uri, "?");
-    
+    ptr = index(uri, "?");
+
     // CGI 인자가 있는 경우
     if(ptr)
     {
       strcpy(cgiargs, ptr + 1);
-      *ptr = '\0';
+      *ptr = '\0';  // uri에서 쿼리 스트링 제거
     }
     else
     {
@@ -179,7 +179,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
     }
 
     strcpy(filename, ".");
-    strcat(filename, uri);
+    strcat(filename, uri);  // 이제 uri는 /cgi-bin/adder만 포함
 
     return 0;
   }
@@ -229,14 +229,14 @@ void get_filetype(char* filename, char* filetype)
     strcpy(filetype, "text/plain");
 }
 
-void serve_dynamic(int fd, char* filename, char* cgiargs)
+void serve_dynamic(int fd, char* filename, char* cgiargs, char *method)
 {
   char buf[MAXLINE], *emptylist[] = { NULL };
 
   // HTTP 응답의 첫 부분 전송
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
-  sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
-  sprintf(buf, "%sContent-Type: text/html\r\n\r\n", buf);
+  Rio_writen(fd, buf, strlen(buf));
+  sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf)); // HTTP 응답의 첫 부분 전송(클라이언트 소켓에 데이터 쓰기)
 
   // CGI 프로그램 실행 : 부모 프로세스는 계속 서버 역할 & 자식 프로세스는 클라이언트 소켓을 표준 출력으로 바꾸고 CGI 프로그램을 실행해 결과를 클라이언트에게 직접 전송
@@ -244,9 +244,11 @@ void serve_dynamic(int fd, char* filename, char* cgiargs)
   if(Fork() == 0)
   {
     setenv("QUERY_STRING", cgiargs, 1); // 환경변수 설정 or 수정
-    Dup2(fd, STDOUT_FILENO); // 표준 출력을 클라이언트 소켓으로 리다이렉션
+    setenv("REQUEST_METHOD", method, 1);
+
+    Dup2(fd, STDOUT_FILENO); // 표준 출력을 클라이언트 소켓으로 리다이렉션 -> CGI 프로그램이 표준 출력으로 쓰는 모든것은 클라이언트로 바로 감(부모프로세스의 간섭 없이)
     Execve(filename, emptylist, environ); // CGI 프로그램 실행
   }
 
-  Wait(NULL);
+  Wait(NULL); // 부모 프로세스가 자식 프로세스가 종료될떄까지 대기하는 함수
 }
