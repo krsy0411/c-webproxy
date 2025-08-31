@@ -234,7 +234,10 @@ void serve_dynamic(int fd, char* filename, char* cgiargs)
   // 조건문 : Fork() 함수 실행시, 부모 프로세스는 자식 프로세스의 PID를 반환받고 자식 프로세스는 0을 반환 -> 즉, 자식 프로세스에서만 실행되도록 하기
   if(Fork() == 0)
   {
+    setenv("QUERY_STRING", cgiargs, 1); // 환경변수 설정 or 수정
     Dup2(fd, STDOUT_FILENO); // 표준 출력을 클라이언트 소켓으로 리다이렉션
     Execve(filename, emptylist, environ); // CGI 프로그램 실행
   }
+
+  Wait(NULL);
 }
