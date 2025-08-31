@@ -201,10 +201,15 @@ void serve_static(int fd, char* filename, int filesize)
 
   // 클라이언트에게 응답 본문(바디) 전송
   src_fd = Open(filename, O_RDONLY, 0); // 파일을 읽기 전용으로 열기 -> 반환(파일 디스크립터)
-  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, src_fd, 0); // 파일 내용을 메모리에 매핑 -> 반환(파일 데이터가 메모리에 적재된 위치(포인터))
+  // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, src_fd, 0); // 파일 내용을 메모리에 매핑 -> 반환(파일 데이터가 메모리에 적재된 위치(포인터))
+
+  srcp = (char *)malloc(sizeof(char) * filesize);
+  Rio_readn(src_fd, srcp, filesize); // 파일 내용 읽기
   Close(src_fd); // 파일 디스크립터 닫기
   Rio_writen(fd, srcp, filesize); // 웹 서버가 클라이언트 소켓(fd)에 데이터 쓰기
-  Munmap(srcp, filesize); // 메모리 매핑 해제 -> 사용이 끝난 메모리 리소스를 OS에 반환
+  free(srcp);
+
+  // Munmap(srcp, filesize); // 메모리 매핑 해제 -> 사용이 끝난 메모리 리소스를 OS에 반환
 }
 
 void get_filetype(char* filename, char* filetype)
