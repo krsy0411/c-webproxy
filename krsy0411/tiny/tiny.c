@@ -11,7 +11,7 @@
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *filename, int filesize);
+void serve_static(int fd, char *filename, int filesize, char* method);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs, char* method);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
@@ -58,6 +58,7 @@ void doit(int fd)
   printf("%s", buf);
   sscanf(buf, "%s %s %s", method, uri, version);
 
+  // 11.11 : GET, HEAD 메서드만 지원하도록 변경
   if(!(strcasecmp(method, "GET") == 0 || strcasecmp(method, "HEAD") == 0))
   {
     clienterror(fd, method, "501", "Not Implemented", "Tiny does not implement this method");
@@ -86,7 +87,7 @@ void doit(int fd)
     }
 
     // 정적 컨텐츠 제공
-    serve_static(fd, filename, sbuf.st_size);
+    serve_static(fd, filename, sbuf.st_size, method);
   }
   // 동적 컨텐츠 제공(웹 애플리케이션 서버)
   else
@@ -185,7 +186,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
   }
 }
 
-void serve_static(int fd, char* filename, int filesize)
+void serve_static(int fd, char* filename, int filesize, char* method)
 {
   int src_fd;
   char* srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -198,18 +199,24 @@ void serve_static(int fd, char* filename, int filesize)
   sprintf(buf, "%sContent-Type: %s\r\n\r\n", buf, filetype);
   // CGI 프로그램 입장에서 표준 출력(stdout)에 데이터를 쓰면, 웹 서버가 그 출력을 받아서 클라이언트에게 전달
   Rio_writen(fd, buf, strlen(buf)); // 웹 서버가 클라이언트 소켓(fd)에 데이터를 쓰는 부분
+  printf("Response headers:\n");
+  printf("%s", buf);
 
-  // 클라이언트에게 응답 본문(바디) 전송
-  src_fd = Open(filename, O_RDONLY, 0); // 파일을 읽기 전용으로 열기 -> 반환(파일 디스크립터)
-  // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, src_fd, 0); // 파일 내용을 메모리에 매핑 -> 반환(파일 데이터가 메모리에 적재된 위치(포인터))
+  //  11.11 : GET 메서드에 대해서만 응답 본문 전송
+  if(strcasecmp(method, "GET") == 0)
+  {
+    // 클라이언트에게 응답 본문(바디) 전송
+    src_fd = Open(filename, O_RDONLY, 0); // 파일을 읽기 전용으로 열기 -> 반환(파일 디스크립터)
+    // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, src_fd, 0); // 파일 내용을 메모리에 매핑 -> 반환(파일 데이터가 메모리에 적재된 위치(포인터))
 
-  srcp = (char *)malloc(sizeof(char) * filesize);
-  Rio_readn(src_fd, srcp, filesize); // 파일 내용 읽기
-  Close(src_fd); // 파일 디스크립터 닫기
-  Rio_writen(fd, srcp, filesize); // 웹 서버가 클라이언트 소켓(fd)에 데이터 쓰기
-  free(srcp);
+    srcp = (char *)malloc(sizeof(char) * filesize);
+    Rio_readn(src_fd, srcp, filesize); // 파일 내용 읽기
+    Close(src_fd); // 파일 디스크립터 닫기
+    Rio_writen(fd, srcp, filesize); // 웹 서버가 클라이언트 소켓(fd)에 데이터 쓰기
+    free(srcp);
 
-  // Munmap(srcp, filesize); // 메모리 매핑 해제 -> 사용이 끝난 메모리 리소스를 OS에 반환
+    // Munmap(srcp, filesize); // 메모리 매핑 해제 -> 사용이 끝난 메모리 리소스를 OS에 반환
+  }
 }
 
 void get_filetype(char* filename, char* filetype)
@@ -243,7 +250,8 @@ void serve_dynamic(int fd, char* filename, char* cgiargs, char *method)
   // 조건문 : Fork() 함수 실행시, 부모 프로세스는 자식 프로세스의 PID를 반환받고 자식 프로세스는 0을 반환 -> 즉, 자식 프로세스에서만 실행되도록 하기
   if(Fork() == 0)
   {
-    setenv("QUERY_STRING", cgiargs, 1); // 환경변수 설정 or 수정
+    // cgi-bin/adder.c에 넘겨주기 위한 환경변수 설정
+    setenv("QUERY_STRING", cgiargs, 1);
     setenv("REQUEST_METHOD", method, 1);
 
     Dup2(fd, STDOUT_FILENO); // 표준 출력을 클라이언트 소켓으로 리다이렉션 -> CGI 프로그램이 표준 출력으로 쓰는 모든것은 클라이언트로 바로 감(부모프로세스의 간섭 없이)

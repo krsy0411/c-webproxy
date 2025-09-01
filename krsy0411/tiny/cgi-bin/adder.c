@@ -35,8 +35,11 @@ int main(void)
   printf("Connection: close\r\n");
   printf("\r\n");
 
-  // 바디부분 : 바디 출력
-  printf("%s", content);
+  // 메서드가 GET인 경우에만 바디 출력
+  if(strcasecmp(getenv("REQUEST_METHOD"), "GET") == 0)
+  {
+    printf("%s", content);
+  }
   fflush(stdout);
 
   exit(0);
