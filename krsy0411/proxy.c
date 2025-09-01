@@ -160,14 +160,14 @@ void makeHttpHeader(char* http_header, char* hostname, char* path, int port, rio
     }
 
     // Connection, Proxy-Connection, User-Agent 헤더는 other_header에 복사
-    if(!(strncasecmp(buf, "Connection", strlen("Connection"))) && !(strncasecmp(buf, "Proxy-Connection", strlen("Proxy-Connection"))) && !(strncasecmp(buf, "User-Agent", strlen("User-Agent"))))
+    if(!(strncasecmp(buf, "Connection", strlen("Connection"))) || !(strncasecmp(buf, "Proxy-Connection", strlen("Proxy-Connection"))) || !(strncasecmp(buf, "User-Agent", strlen("User-Agent"))))
     {
       strcat(other_header, buf);
     }
   }
 
   // Host 헤더가 없는 경우 기본값 설정
-  if(strlen(host_header) == 0)
+  if(!strlen(host_header))
   {
     sprintf(host_header, "Host: %s\r\n", hostname);
   }

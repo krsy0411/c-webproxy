@@ -166,7 +166,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
   else
   {
     // uri에서 CGI 인자 추출
-    ptr = strchr(uri, "?");
+    ptr = strchr(uri, '?');
 
     // CGI 인자가 있는 경우
     if(ptr)
@@ -210,6 +210,14 @@ void serve_static(int fd, char* filename, int filesize, char* method)
     // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, src_fd, 0); // 파일 내용을 메모리에 매핑 -> 반환(파일 데이터가 메모리에 적재된 위치(포인터))
 
     srcp = (char *)malloc(sizeof(char) * filesize);
+    if(srcp == NULL)
+    {
+      // 메모리 할당 실패 처리(예외 처리)
+      clienterror(fd, filename, "500", "Internal Server Error", "Failed to allocate memory");
+      Close(src_fd);
+      return;
+    }
+
     Rio_readn(src_fd, srcp, filesize); // 파일 내용 읽기
     Close(src_fd); // 파일 디스크립터 닫기
     Rio_writen(fd, srcp, filesize); // 웹 서버가 클라이언트 소켓(fd)에 데이터 쓰기
