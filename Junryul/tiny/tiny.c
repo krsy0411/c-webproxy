@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 
     Rio_readlineb(rp, buf, MAXLINE); // 요청 헤더의 첫 번째 라인 읽기
     while (strcmp(buf, "\r\n")) { // 요청 헤더가 끝날 때까지 반복
-      printf("%s", buf); // 과제 11.6C 
+      printf("%s", buf); // 과제 11.6A
       Rio_readlineb(rp, buf, MAXLINE); // 다음 요청 헤더 라인 읽기      
     }
     return;
@@ -163,7 +163,9 @@ int main(int argc, char **argv)
     else if (strstr(filename, ".jpg"))
       strcpy(filetype, "image/jpeg");
     else if (strstr(filename, ".png"))
-      strcpy(filetype, "image/png"); // 과제 11.7
+      strcpy(filetype, "image/png");
+    else if (strstr(filename, ".mp4"))
+      strcpy(filetype, "video/mp4"); // 과제 11.7
     else
       strcpy(filetype, "text/plain");
   }
