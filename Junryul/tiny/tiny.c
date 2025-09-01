@@ -11,9 +11,9 @@
 void doit(int fd);                                                                  // 요청 처리 함수
 void read_requesthdrs(rio_t *rp);                                                   // 요청 헤더 읽기 함수
 int parse_uri(char *uri, char *filename, char *cgiargs);                            // URI 파싱 함수
-void serve_static(int fd, char *filename, int filesize);                            // 정적 컨텐츠 제공 함수
+void serve_static(int fd, char *filename, int filesize, char *method);              // 정적 컨텐츠 제공 함수 과제 11.11 메소드 인자 추가
 void get_filetype(char *filename, char *filetype);                                  // 파일 타입 결정 함수
-void serve_dynamic(int fd, char *filename, char *cgiargs);                          // 동적 컨텐츠 제공 함수
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method);            // 동적 컨텐츠 제공 함수 과제 11.11 메소드 인자 추가
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg); // 클라이언트 오류 응답 함수
 void sigchld_handler(int sig); // 과제 11.8 시그널 핸들러
 
@@ -60,7 +60,7 @@ void doit(int fd)
   printf("Request headers:\n");
   printf("%s", buf);
   sscanf(buf, "%s %s %s", method, uri, version); // 요청 라인 파싱
-  if (strcasecmp(method, "GET"))
+  if (strcasecmp(method, "GET") != 0 && strcasecmp(method, "HEAD") != 0)
   {
     clienterror(fd, method, "501", "Not Implemented", "Tiny does not implement this method");
     return;
@@ -84,7 +84,7 @@ void doit(int fd)
       clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't read the file");
       return;
     }
-    serve_static(fd, filename, sbuf.st_size); // 정적 컨텐츠 제공
+    serve_static(fd, filename, sbuf.st_size, method); // 정적 컨텐츠 제공 (과제 11.11 메소드 인자 추가)
   }
   else
   {
@@ -93,7 +93,7 @@ void doit(int fd)
       clienterror(fd, filename, "403", "Forbidden", "Tiny couldn't run the CGI program");
       return;
     }
-    serve_dynamic(fd, filename, cgiargs); // 동적 컨텐츠 제공
+    serve_dynamic(fd, filename, cgiargs, method); // 동적 컨텐츠 제공 (과제 11.11 메소드 인자 추가)
   }
 }
 
@@ -147,7 +147,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
 }
 
 // 정적 컨텐츠 제공 함수
-void serve_static(int fd, char *filename, int filesize)
+void serve_static(int fd, char *filename, int filesize, char *method)
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -166,7 +166,12 @@ void serve_static(int fd, char *filename, int filesize)
   srcp = (char*)malloc(filesize);                             // 파일 크기만큼 메모리 할당
   Rio_readn(srcfd, srcp, filesize);                           // 파일 내용을 메모리에 읽기
   Close(srcfd);                                               // 원본 파일 닫기
-  Rio_writen(fd, srcp, filesize);                             // 응답 본문 전송
+
+  // 과제 11.11 HEAD 메소드 지원
+  // GET 요청인 경우에만 본문 전송
+  if (strcasecmp(method, "GET") == 0) {
+    Rio_writen(fd, srcp, filesize);
+  }
   free(srcp);
 }
 
@@ -202,7 +207,7 @@ void sigchld_handler(int sig) {
 }
 
 // 동적 컨텐츠 제공 함수
-void serve_dynamic(int fd, char *filename, char *cgiargs)
+void serve_dynamic(int fd, char *filename, char *cgiargs, char *method)
 {
   char buf[MAXLINE], *emptylist[] = {NULL};
 
@@ -211,12 +216,15 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
   sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf));            // 서버 정보 전송
 
-  if (Fork() == 0)
-  {
-    setenv("QUERY_STRING", cgiargs, 1);   // CGI 인자를 환경 변수로 설정
-    Dup2(fd, STDOUT_FILENO);              // 표준 출력을 클라이언트로 리다이렉트
-    Execve(filename, emptylist, environ); // CGI 프로그램 실행
-    exit(0);
+  // 과제 11.11 HEAD 메소드 지원
+  if (strcasecmp(method, "GET") == 0) {
+    if (Fork() == 0)
+    {
+      setenv("QUERY_STRING", cgiargs, 1);   // CGI 인자를 환경 변수로 설정
+      Dup2(fd, STDOUT_FILENO);              // 표준 출력을 클라이언트로 리다이렉트
+      Execve(filename, emptylist, environ); // CGI 프로그램 실행
+      exit(0);
+    }
   }
 }
 
