@@ -69,7 +69,7 @@ void doit(int fd) {
   sscanf(buf, "%s %s %s", method, uri, version);
   
   // GET 요청이 아닌 다른 요청 입력시 에러 반환 (tiny서버는 GET메소드만 지원함)
-  if (strcasecmp(method, "GET") || strcasecmp(method, "HEAD")) { // 숙제문제 11.11 method HEAD 추가
+  if (!(strcasecmp(method, "GET") == 0 || strcasecmp(method, "HEAD") == 0)) { // 숙제문제 11.11 method HEAD 추가
     clienterror(fd, method, "501", "Not implemented", "Tiny does not implement this method");
     return;
   }
