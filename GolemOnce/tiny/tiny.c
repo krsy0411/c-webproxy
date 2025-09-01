@@ -8,7 +8,7 @@
  */
 #include "csapp.h"
 
-void doit(int fd){};
+void doit(int fd) {};
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
 void serve_static(int fd, char *filename, int filesize);
@@ -16,24 +16,21 @@ void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   int listenfd, connfd;
   char hostname[MAXLINE], port[MAXLINE];
   socklen_t clientlen;
   struct sockaddr_storage clientaddr;
 
   /* Check command line args */
-  if (argc != 2)
-  {
+  if (argc != 2) {
     fprintf(stderr, "usage: %s <port>\n", argv[0]);
     exit(1);
   }
 
   //듣기 소켓 오픈
   listenfd = Open_listenfd(argv[1]);
-  while (1)
-  {
+  while (1) {
     clientlen = sizeof(clientaddr);
     connfd = Accept(listenfd, (SA *)&clientaddr,
                     &clientlen); // line:netp:tiny:accept
@@ -45,7 +42,7 @@ int main(int argc, char **argv)
   }
 }
 
-void doit(int fd){
+void doit(int fd) {
   int is_static;
   struct stat sbuf;
   char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
@@ -59,7 +56,7 @@ void doit(int fd){
   sscanf(buf, "%s %s %s", method, uri, version);
   
   // GET 요청이 아닌 다른 요청 입력시 에러 반환 (tiny서버는 GET메소드만 지원함)
-  if (strcasecmp(method, "GET")){
+  if (strcasecmp(method, "GET")) {
     clienterror(fd, method, "501", "Not implemented", "Tiny does not implement this method");
     return;
   }
@@ -67,7 +64,7 @@ void doit(int fd){
 
   // GET 요청으로부터 URI 파싱
   is_static = parse_uri(uri, filename, cgiargs);
-  if (stat(filename, &sbuf) < 0){
+  if (stat(filename, &sbuf) < 0) {
     clienterror(fd, filename, "404", "Not found", "Tiny couldn't find this file");
     return;
   }
@@ -89,7 +86,7 @@ void doit(int fd){
   }
 }
 
-void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg){
+void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg) {
   char buf[MAXLINE], body[MAXLINE];
 
   // HTTP 응답 본체 빌드
@@ -109,31 +106,31 @@ void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longms
   Rio_writen(fd, body, strlen(body));
 }
 
-void read_requesthdrs(rio_t *rp){ // 요청 헤더 읽고 무시
+void read_requesthdrs(rio_t *rp) { // 요청 헤더 읽고 무시
   char buf[MAXLINE];
 
   Rio_readlineb(rp, buf, MAXLINE);
-  while(strcmp(buf, "\r\n")){ // 헤더 종료용 빈 텍스트 줄 체크
+  while(strcmp(buf, "\r\n")) { // 헤더 종료용 빈 텍스트 줄 체크
     Rio_readlineb(rp, buf, MAXLINE); 
     printf("%s", buf);
   } 
   return;
 }
 
-int parse_uri(char *uri, char *filename, char *cgiargs){
+int parse_uri(char *uri, char *filename, char *cgiargs) {
   char *ptr;
 
-  if (!strstr(uri, "cgi-bin")){ // 정적 컨텐츠
+  if (!strstr(uri, "cgi-bin")) { // 정적 컨텐츠
     strcpy(cgiargs, "");
     strcpy(filename, ".");
     strcat(filename, uri);
     if(uri[strlen(uri)-1] == '/')
       strcat(filename, "home.html");
-      return 1;
+    return 1;
   }
-  else{ // 동적 컨텐츠
+  else { // 동적 컨텐츠
     ptr = index(uri, '?');
-    if (ptr){
+    if (ptr) {
       strcpy(cgiargs, ptr+1);
       *ptr = '\0';
     }
@@ -144,7 +141,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs){
   }
 }
 
-void serve_static(int fd, char *filename, int filesize){
+void serve_static(int fd, char *filename, int filesize) {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
 
@@ -168,7 +165,7 @@ void serve_static(int fd, char *filename, int filesize){
   Nummap(*srcp, filesize);
 }
 
-void get_filetype(char *filename, char *filetype){
+void get_filetype(char *filename, char *filetype) {
   if (strstr(filename, ".html")) strcpy(filetype, "text/html");
   else if (strstr(filename, ".gif")) strcpy (filetype, "image/gif");
   else if (strstr(filename, ".png")) strcpy (filetype, "image/png");
@@ -176,7 +173,7 @@ void get_filetype(char *filename, char *filetype){
   else strcpy(filetype, "text/plain");
 }
 
-void serve_dynamic(int fd, char *filename, char *cgiargs){
+void serve_dynamic(int fd, char *filename, char *cgiargs) {
   char buf[MAXLINE], *emptylist[] = { NULL };
 
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
@@ -184,7 +181,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs){
   sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf));
 
-  if (Fork() == 0){
+  if (Fork() == 0) {
     setenv("QUERY_STRING", cgiargs, 1);
     Dup2(fd, STDOUT_FILENO);
     Execve(filename, emptylist, environ);
