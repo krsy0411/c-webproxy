@@ -8,6 +8,7 @@
 void doit(int fd);
 int parse_uri(char* uri, char* hostname, char* path, int* port);
 void makeHttpHeader(char* http_header, char* hostname, char* path, int port, rio_t* client_rio);
+void* thread(void* connection_fd_ptr);
 
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr =
@@ -16,10 +17,11 @@ static const char *user_agent_hdr =
 
 int main(int argc, char **argv)
 {
-  int listen_fd, connection_fd;
+  int listen_fd;
   char hostname[MAXLINE], port[MAXLINE];
   socklen_t client_len;
   struct sockaddr_storage client_addr;
+  pthread_t tid;
 
   // 인자 개수가 알맞게 안 들어왔으면, 에러를 출력하고 종료
   if(argc != 2)
@@ -32,13 +34,22 @@ int main(int argc, char **argv)
   while(1)
   {
     client_len = sizeof(client_addr);
-    connection_fd = Accept(listen_fd, (SA *)(&client_addr), &client_len);
+    int* connection_fd = Malloc(sizeof(int)); // 클라이언트와 연결된 소켓의 파일 디스크립터를 저장할 포인터 : 매 스레드마다 독립적인 메모리 공간 사용
+
+    if(connection_fd == NULL)
+    {
+      fprintf(stderr, "Error: Unable to allocate memory for connection_fd\n");
+      continue;
+    }
+
+    *connection_fd = Accept(listen_fd, (SA *)(&client_addr), &client_len);
     Getnameinfo((SA *)(&client_addr), client_len, hostname, MAXLINE, port, MAXLINE, 0);
 
     printf("Accepted connection from (%s, %s)\n", hostname, port);
 
-    doit(connection_fd);
-    Close(connection_fd);
+    Pthread_create(&tid, NULL, thread, connection_fd);
+    // doit(connection_fd);
+    // Close(connection_fd);
   }
 
   // printf("%s", user_agent_hdr);
@@ -176,4 +187,16 @@ void makeHttpHeader(char* http_header, char* hostname, char* path, int port, rio
   sprintf(http_header, "%s%s%s%s%s%s%s", request_header, host_header, "Connection: close\r\n", "Proxy-Connection: close\r\n", user_agent_hdr, other_header, "\r\n");
 
   return;
+}
+
+/* 스레드 함수 */
+void* thread(void* connection_fd_ptr)
+{
+  int connection_fd = (*(int *)connection_fd_ptr);
+  
+  Pthread_detach(pthread_self()); // 스레드 분리 -> 자신의 메모리 자원들이 종료 후 반환될 수 있도록
+  Free(connection_fd_ptr); // 동적 할당된 메모리 해제
+  doit(connection_fd);
+  Close(connection_fd);
+  return NULL;
 }
