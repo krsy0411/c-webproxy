@@ -15,6 +15,7 @@ void serve_static(int fd, char *filename, int filesize);                        
 void get_filetype(char *filename, char *filetype);                                  // 파일 타입 결정 함수
 void serve_dynamic(int fd, char *filename, char *cgiargs);                          // 동적 컨텐츠 제공 함수
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg); // 클라이언트 오류 응답 함수
+void sigchld_handler(int sig);
 
 int main(int argc, char **argv)
 {
@@ -22,6 +23,8 @@ int main(int argc, char **argv)
   char hostname[MAXLINE], port[MAXLINE]; // 클라이언트의 호스트 이름과 포트 번호
   socklen_t clientlen;                   // 클라이언트 주소의 길이
   struct sockaddr_storage clientaddr;    // 클라이언트 주소 구조체
+
+  signal(SIGCHLD, sigchld_handler);
 
   if (argc != 2) // 포트 번호가 제공되지 않은 경우
   {
@@ -181,6 +184,38 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "text/plain");
 }
 
+// // 동적 컨텐츠 제공 함수
+// void serve_dynamic(int fd, char *filename, char *cgiargs)
+// {
+//   char buf[MAXLINE], *emptylist[] = {NULL};
+
+//   sprintf(buf, "HTTP/1.0 200 OK\r\n");         // 응답 상태 라인
+//   Rio_writen(fd, buf, strlen(buf));            // 응답 헤더 전송
+//   sprintf(buf, "Server: Tiny Web Server\r\n"); // 서버 정보
+//   Rio_writen(fd, buf, strlen(buf));            // 서버 정보 전송
+
+//   if (Fork() == 0)
+//   {
+//     setenv("QUERY_STRING", cgiargs, 1);   // CGI 인자를 환경 변수로 설정
+//     Dup2(fd, STDOUT_FILENO);              // 표준 출력을 클라이언트로 리다이렉트
+//     Execve(filename, emptylist, environ); // CGI 프로그램 실행
+//   }
+//   Wait(NULL); // 자식 프로세스 대기
+// }
+
+void sigchld_handler(int sig) {
+    int olderrno = errno;
+    int status;
+    pid_t pid;
+
+    // 종료된 자식 프로세스 수거
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        printf("Child %d terminated\n", pid);
+    }
+
+    errno = olderrno;
+}
+
 // 동적 컨텐츠 제공 함수
 void serve_dynamic(int fd, char *filename, char *cgiargs)
 {
@@ -196,8 +231,8 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
     setenv("QUERY_STRING", cgiargs, 1);   // CGI 인자를 환경 변수로 설정
     Dup2(fd, STDOUT_FILENO);              // 표준 출력을 클라이언트로 리다이렉트
     Execve(filename, emptylist, environ); // CGI 프로그램 실행
+    exit(0);
   }
-  Wait(NULL); // 자식 프로세스 대기
 }
 
 // 클라이언트 오류 응답 함수
