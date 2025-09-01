@@ -166,7 +166,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
   else
   {
     // uri에서 CGI 인자 추출
-    ptr = strchr(uri, '?');
+    ptr = strchr(uri, "?");
 
     // CGI 인자가 있는 경우
     if(ptr)

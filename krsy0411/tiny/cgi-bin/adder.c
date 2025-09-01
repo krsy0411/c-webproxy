@@ -36,7 +36,8 @@ int main(void)
   printf("\r\n");
 
   // 메서드가 GET인 경우에만 바디 출력
-  if(strcasecmp(getenv("REQUEST_METHOD"), "GET") == 0)
+  char* request_method = getenv("REQUEST_METHOD");
+  if(strcasecmp(request_method, "GET") == 0)
   {
     printf("%s", content);
   }
