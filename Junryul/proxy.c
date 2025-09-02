@@ -155,6 +155,7 @@ void change_requesthdrs(rio_t *rp, char *method, char *hostname, char *port, cha
 
   request_buf[0] = '\0';
 
+  // 헤더 변환해야 되는 부분 미리 지정
   int n = snprintf(request_buf, size,
                    "%s %s HTTP/1.1\r\n"
                    "Host: %s:%s\r\n"
@@ -169,20 +170,22 @@ void change_requesthdrs(rio_t *rp, char *method, char *hostname, char *port, cha
     return;
   }
 
-  char buf[MAXLINE];
+  char buf[MAXLINE]; // 요청 헤더를 읽기 위한 버퍼
 
+  // 나머지 헤더 읽기
   while (Rio_readlineb(rp, buf, MAXLINE) > 0)
   {
     if (!strcmp(buf, "\r\n"))
     {
       break;
     }
+    // 따로 지정하는 부분은 무시하게끔
     if (strncasecmp(buf, "Host:", 5) == 0 ||
         strncasecmp(buf, "Connection:", 11) == 0 ||
         strncasecmp(buf, "Proxy-Connection:", 17) == 0 ||
         strncasecmp(buf, "User-Agent:", 11) == 0)
     {
-      continue; // 기존 헤더 무시
+      continue;
     }
     strncat(request_buf, buf, size - strlen(request_buf) - 1);
   }
