@@ -17,6 +17,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs, char *method); // 숙�
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
 int main(int argc, char **argv) {
+  Signal(SIGPIPE, SIG_IGN);   // csapp의 Signal 래퍼 사용
   int listenfd, connfd;
   char hostname[MAXLINE], port[MAXLINE];
   socklen_t clientlen;
@@ -188,7 +189,8 @@ void get_filetype(char *filename, char *filetype) {
   else if (strstr(filename, ".gif")) strcpy (filetype, "image/gif");
   else if (strstr(filename, ".png")) strcpy (filetype, "image/png");
   else if (strstr(filename, ".jpg")) strcpy (filetype, "image/jpeg");
-  else if (strstr(filename, ".mpg")) strcpy (filetype, "video/mpg"); // 숙제문제 11.7 MPG 비디오 파일 처리
+  else if (strstr(filename, ".mpg") || strstr(filename, ".mp4") 
+          || strstr(filename, ".mpeg")) strcpy (filetype, "video/mpeg"); // 숙제문제 11.7 MPG 비디오 파일 처리
   else strcpy(filetype, "text/plain");
 }
 
@@ -196,13 +198,15 @@ void serve_dynamic(int fd, char *filename, char *cgiargs, char *method) {
   char buf[MAXLINE], *emptylist[] = { NULL };
 
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
-  Rio_writen(fd, buf, strlen(buf));
-  sprintf(buf, "Server: Tiny Web Server\r\n");
+  sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
+  // HTTP 응답 static과 일관성 유지
+  sprintf(buf, "%sContent-type: text/html\r\n", buf);
+  sprintf(buf, "%sConnection: close\r\n\r\n", buf);
   Rio_writen(fd, buf, strlen(buf));
 
   if (Fork() == 0) {
     setenv("QUERY_STRING", cgiargs, 1);
-    setenv("REQUEST_METHOD", method, 1); // 숙제문제 11.11 HEAD
+    setenv("REQUEST_METHOD", method, 1); // 숙제문제 11.11 HEAD일 때, 환경변수 변경 (/cig-bin/adder.c)
     Dup2(fd, STDOUT_FILENO);
     Execve(filename, emptylist, environ);
   }
