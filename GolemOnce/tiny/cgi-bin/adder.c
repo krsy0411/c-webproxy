@@ -2,17 +2,15 @@
  * adder.c - a minimal CGI program that adds two numbers together
  */
 /* $begin adder */
-#include "csapp.h"
+#include "../csapp.h"
 
-int main(void)
-{
-  char *buf, *p;
+int main(void) {
+  char *buf, *p, *method; // GET 이외의 메서드 걸러내기 위한 변수 추가
   char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE];
   int n1 = 0, n2 = 0;
 
   /* Extract the two arguments */
-  if ((buf = getenv("QUERY_STRING")) != NULL)
-  {
+  if ((buf = getenv("QUERY_STRING")) != NULL) {
     p = strchr(buf, '&');
     *p = '\0';
     strcpy(arg1, buf);
@@ -33,7 +31,12 @@ int main(void)
   printf("Content-type: text/html\r\n");
   printf("Content-length: %d\r\n", (int)strlen(content));
   printf("\r\n");
-  printf("%s", content);
+
+  // GET 메서드일 경우에만 출력
+  method = getenv("REQUEST_METHOD");
+  if (strcasecmp(method, "GET") == 0) {
+    printf("%s", content);
+  }
   fflush(stdout);
 
   exit(0);
