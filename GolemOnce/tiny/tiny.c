@@ -17,7 +17,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs, char *method); // 숙�
 void clienterror(int fd, char *cause, char *errnum, char *shortmsg, char *longmsg);
 
 int main(int argc, char **argv) {
-  Signal(SIGPIPE, SIG_IGN);   // csapp의 Signal 래퍼 사용
+  // Signal(SIGPIPE, SIG_IGN);   // csapp의 Signal 래퍼 사용
   int listenfd, connfd;
   char hostname[MAXLINE], port[MAXLINE];
   socklen_t clientlen;
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   }
 }
 
-void echo(int connfd){
+void echo(int connfd) {
     size_t n;
     char buf[MAXLINE];
     rio_t rio;
@@ -200,8 +200,8 @@ void serve_dynamic(int fd, char *filename, char *cgiargs, char *method) {
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
   // HTTP 응답 static과 일관성 유지
-  sprintf(buf, "%sContent-type: text/html\r\n", buf);
   sprintf(buf, "%sConnection: close\r\n\r\n", buf);
+  sprintf(buf, "%sContent-type: text/html\r\n", buf);
   Rio_writen(fd, buf, strlen(buf));
 
   if (Fork() == 0) {

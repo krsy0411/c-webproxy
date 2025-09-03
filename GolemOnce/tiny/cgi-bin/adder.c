@@ -4,15 +4,13 @@
 /* $begin adder */
 #include "../csapp.h"
 
-int main(void)
-{
+int main(void) {
   char *buf, *p, *method; // GET 이외의 메서드 걸러내기 위한 변수 추가
   char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE];
   int n1 = 0, n2 = 0;
 
   /* Extract the two arguments */
-  if ((buf = getenv("QUERY_STRING")) != NULL)
-  {
+  if ((buf = getenv("QUERY_STRING")) != NULL) {
     p = strchr(buf, '&');
     *p = '\0';
     strcpy(arg1, buf);
